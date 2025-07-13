@@ -122,4 +122,36 @@ public class LSBImageSteganography {
         }
         return diff;
     }
+
+    // Extract the raw embedded string from the image (without decryption)
+    public static String getRawExtractedString(Bitmap src) {
+        int width = src.getWidth(), height = src.getHeight();
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        int bitIndex = 0;
+        int currentByte = 0;
+        StringBuilder collected = new StringBuilder();
+        outer:
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int b = src.getPixel(x, y) & 0xFF;
+                int bit = b & 1;
+                currentByte = (currentByte << 1) | bit;
+                bitIndex++;
+                if (bitIndex % 8 == 0) {
+                    baos.write(currentByte);
+                    String s = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+                    if (s.contains(DELIM)) break outer;
+                    currentByte = 0;
+                }
+            }
+        }
+        byte[] allBytes = baos.toByteArray();
+        String result = new String(allBytes, StandardCharsets.UTF_8);
+        int delimIndex = result.indexOf(DELIM);
+        if (delimIndex != -1) {
+            return result.substring(0, delimIndex);
+        } else {
+            return result;
+        }
+    }
 }
