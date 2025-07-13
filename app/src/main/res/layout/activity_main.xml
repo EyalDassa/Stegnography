@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Secret message input -->
+        <EditText
+            android:id="@+id/etMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter message"
+            android:inputType="textMultiLine"
+            android:lines="3"
+            android:gravity="top"
+            android:background="@android:drawable/edit_text"
+            android:layout_marginBottom="8dp" />
+
+        <!-- AES key input/generation -->
+        <EditText
+            android:id="@+id/etKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="AES Key (Base64)"
+            android:inputType="textNoSuggestions"
+            android:background="@android:drawable/edit_text"
+            android:layout_marginBottom="16dp" />
+
+        <Button
+            android:id="@+id/btnGenerateKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Generate Key"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Image Steganography Section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Image Steganography"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnEncodeImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Encode in Image"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnDecodeImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Decode from Image"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Audio Steganography Section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Audio Steganography"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnEncodeAudio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Encode in Audio"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnDecodeAudio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Decode from Audio" />
+
+        <ImageView
+            android:id="@+id/ivOriginal"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:scaleType="fitCenter"
+            android:layout_marginTop="16dp"/>
+        <ImageView
+            android:id="@+id/ivStego"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:scaleType="fitCenter"
+            android:layout_marginTop="8dp"/>
+        <ImageView
+            android:id="@+id/ivDiff"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:scaleType="fitCenter"
+            android:layout_marginTop="8dp"/>
+
+    </LinearLayout>
+
+</ScrollView>
