@@ -29,21 +29,21 @@
 
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/fragmentOriginalAudio"
-            android:name="com.example.stegnography.ui.MediaDisplayFragment"
+            android:name="com.example.stegnography.MediaDisplayFragment"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"/>
 
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/fragmentStegoAudio"
-            android:name="com.example.stegnography.ui.MediaDisplayFragment"
+            android:name="com.example.stegnography.MediaDisplayFragment"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"/>
 
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/fragmentDiffAudio"
-            android:name="com.example.stegnography.ui.MediaDisplayFragment"
+            android:name="com.example.stegnography.MediaDisplayFragment"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"/>
@@ -95,6 +95,17 @@
 
         <TextView
             android:id="@+id/tvExtractedAudio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginTop="8dp"
+            android:background="#ECEFF1"
+            android:padding="12dp"
+            android:textColor="#222222"
+            android:fontFamily="sans-serif"
+            android:layout_marginBottom="8dp"/>
+        <TextView
+            android:id="@+id/tvEncryptedAudio"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="16sp"

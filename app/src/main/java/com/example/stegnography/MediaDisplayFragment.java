@@ -1,4 +1,4 @@
-package com.example.stegnography.ui;
+package com.example.stegnography;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -11,7 +11,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import com.example.stegnography.R;
+
+import com.example.stegnography.ui.WaveformView;
+import com.example.stegnography.ui.WaveformUtils;
 
 public class MediaDisplayFragment extends Fragment {
     public static final String ARG_LABEL = "label";
@@ -46,12 +48,11 @@ public class MediaDisplayFragment extends Fragment {
                 imageView.setBackgroundResource(R.drawable.media_bg_image);
                 mediaContainer.addView(imageView);
             } else if ("waveform".equals(type)) {
-                WaveformView waveformView = new WaveformView(requireContext());
-                waveformView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                android.view.ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+                WaveformView waveformView = WaveformUtils.createWaveformView(requireContext(), com.example.stegnography.utils.AudioUtils.loadPcmFromWav(path), params);
                 waveformView.setBackgroundResource(R.drawable.media_bg_waveform);
                 waveformView.setPadding(4, 4, 4, 4);
                 waveformView.setClipToOutline(true);
-                waveformView.setWaveform(AudioComparisonActivity.loadPcmFromWavStatic(path));
                 mediaContainer.addView(waveformView);
             }
         }

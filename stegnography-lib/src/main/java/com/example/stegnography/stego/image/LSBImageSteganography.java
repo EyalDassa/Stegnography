@@ -2,17 +2,16 @@ package com.example.stegnography.stego.image;
 
 import android.graphics.Bitmap;
 import com.example.stegnography.crypto.CryptoUtils;
+
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.BitSet;
 import javax.crypto.SecretKey;
 
 public class LSBImageSteganography {
     private static final String DELIM = "<<<END>>>";
 
     public Bitmap embed(Bitmap src, String message, SecretKey key) throws Exception {
-        // 1. temporarily disable encryption for debugging
-        // String encrypted = CryptoUtils.encrypt(message, key) + DELIM;
-        String encrypted = message + DELIM;
+        String encrypted = CryptoUtils.encrypt(message, key) + DELIM;
         byte[] data = encrypted.getBytes(StandardCharsets.UTF_8);
         int totalBits = data.length * 8;
 
@@ -48,7 +47,7 @@ public class LSBImageSteganography {
     public String extract(Bitmap src, SecretKey key) throws Exception {
         int width = src.getWidth(), height = src.getHeight();
         // We'll collect bits and reconstruct bytes manually
-        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
         int bitIndex = 0;
         int currentByte = 0;
 
@@ -73,15 +72,14 @@ public class LSBImageSteganography {
         if (delimIndex == -1) {
             throw new Exception("No hidden message found or wrong key/image.");
         }
-        String msg = collected.substring(0, delimIndex);
-        // return CryptoUtils.decrypt(encMsg, key);
-        return msg;
+        String encMsg = collected.substring(0, delimIndex);
+        return CryptoUtils.decrypt(encMsg, key);
     }
 
     // Debug function: show the bitwise difference between two images as a string
     public static String extractDifferenceAsString(Bitmap original, Bitmap stego, int messageLength) {
         int width = original.getWidth(), height = original.getHeight();
-        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
         int bitIndex = 0;
         int currentByte = 0;
         int totalBits = (messageLength + DELIM.length()) * 8;
@@ -126,7 +124,7 @@ public class LSBImageSteganography {
     // Extract the raw embedded string from the image (without decryption)
     public static String getRawExtractedString(Bitmap src) {
         int width = src.getWidth(), height = src.getHeight();
-        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
         int bitIndex = 0;
         int currentByte = 0;
         StringBuilder collected = new StringBuilder();

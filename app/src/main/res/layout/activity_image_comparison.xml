@@ -29,21 +29,21 @@
 
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/fragmentOriginal"
-            android:name="com.example.stegnography.ui.MediaDisplayFragment"
+            android:name="com.example.stegnography.MediaDisplayFragment"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"/>
 
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/fragmentStego"
-            android:name="com.example.stegnography.ui.MediaDisplayFragment"
+            android:name="com.example.stegnography.MediaDisplayFragment"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"/>
 
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/fragmentDiff"
-            android:name="com.example.stegnography.ui.MediaDisplayFragment"
+            android:name="com.example.stegnography.MediaDisplayFragment"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"/>
@@ -56,6 +56,18 @@
 
         <TextView
             android:id="@+id/tvExtracted"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textStyle="normal"
+            android:textSize="14sp"
+            android:layout_marginTop="8dp"
+            android:padding="12dp"
+            android:background="#ECEFF1"
+            android:textColor="#222222"
+            android:fontFamily="sans-serif"
+            android:layout_marginBottom="8dp"/>
+        <TextView
+            android:id="@+id/tvEncrypted"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textStyle="normal"

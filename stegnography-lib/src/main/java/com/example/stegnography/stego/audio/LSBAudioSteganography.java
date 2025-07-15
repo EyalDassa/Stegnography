@@ -2,9 +2,8 @@ package com.example.stegnography.stego.audio;
 
 import com.example.stegnography.crypto.CryptoUtils;
 import java.io.*;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.BitSet;
+import java.nio.charset.StandardCharsets;
+
 import javax.crypto.SecretKey;
 
 public class LSBAudioSteganography {
@@ -43,7 +42,7 @@ public class LSBAudioSteganography {
             raf.readFully(pcm);
 
             // encrypt + delimiter
-            String enc = com.example.stegnography.crypto.CryptoUtils.encrypt(message, key) + DELIM;
+            String enc = CryptoUtils.encrypt(message, key) + DELIM;
             byte[] data = enc.getBytes("UTF-8");
             int totalBits = data.length * 8;
 
@@ -72,7 +71,7 @@ public class LSBAudioSteganography {
             raf.seek(dataStart);
             byte[] pcm = new byte[dataLen];
             raf.readFully(pcm);
-            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
             int bitIndex = 0;
             int currentByte = 0;
             for (int i = 0; i < dataLen / 2; i++) {
@@ -84,19 +83,54 @@ public class LSBAudioSteganography {
                 bitIndex++;
                 if (bitIndex % 8 == 0) {
                     baos.write(currentByte);
-                    String s = new String(baos.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+                    String s = new String(baos.toByteArray(), StandardCharsets.UTF_8);
                     if (s.contains(DELIM)) break;
                     currentByte = 0;
                 }
             }
             byte[] all = baos.toByteArray();
-            String coll = new String(all, java.nio.charset.StandardCharsets.UTF_8);
+            String coll = new String(all, StandardCharsets.UTF_8);
             int delimIndex = coll.indexOf(DELIM);
             if (delimIndex == -1) {
                 throw new Exception("No hidden message found or wrong key/audio file.");
             }
             String encMsg = coll.substring(0, delimIndex);
-            return com.example.stegnography.crypto.CryptoUtils.decrypt(encMsg, key);
+            return CryptoUtils.decrypt(encMsg, key);
+        }
+    }
+
+    public String extractRawString(File inWav) throws Exception {
+        try (RandomAccessFile raf = new RandomAccessFile(inWav, "r")) {
+            int[] dataInfo = findWavDataChunk(raf);
+            int dataStart = dataInfo[0];
+            int dataLen = dataInfo[1];
+            raf.seek(dataStart);
+            byte[] pcm = new byte[dataLen];
+            raf.readFully(pcm);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            int bitIndex = 0;
+            int currentByte = 0;
+            for (int i = 0; i < dataLen / 2; i++) {
+                int lo = pcm[i * 2] & 0xFF;
+                int hi = pcm[i * 2 + 1] & 0xFF;
+                short sample = (short) ((hi << 8) | lo);
+                int bit = sample & 1;
+                currentByte = (currentByte << 1) | bit;
+                bitIndex++;
+                if (bitIndex % 8 == 0) {
+                    baos.write(currentByte);
+                    String s = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+                    if (s.contains(DELIM)) break;
+                    currentByte = 0;
+                }
+            }
+            byte[] all = baos.toByteArray();
+            String coll = new String(all, StandardCharsets.UTF_8);
+            int delimIndex = coll.indexOf(DELIM);
+            if (delimIndex == -1) {
+                throw new Exception("No hidden message found or wrong key/audio file.");
+            }
+            return coll.substring(0, delimIndex);
         }
     }
 

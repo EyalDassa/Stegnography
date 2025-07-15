@@ -1,25 +1,22 @@
-package com.example.stegnography.ui;
+package com.example.stegnography;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Base64;
+
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
+
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.stegnography.R;
-import com.example.stegnography.crypto.CryptoUtils;
-import com.example.stegnography.crypto.KeyManager;
-import com.example.stegnography.stego.image.LSBImageSteganography;
 import com.example.stegnography.stego.audio.LSBAudioSteganography;
+import com.example.stegnography.stego.image.LSBImageSteganography;
 import com.example.stegnography.utils.ImageUtils;
 
 import java.io.File;
@@ -27,22 +24,17 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.security.GeneralSecurityException;
 
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 
 public class MainActivity extends AppCompatActivity {
     private EditText etMessage, etKey;
     private Button btnGenerateKey, btnEncodeImage, btnDecodeImage;
     private Button btnEncodeAudio, btnDecodeAudio;
-    // Remove ivOriginal, ivStego, ivDiff as they are no longer in the layout
+
     private Bitmap lastOriginalBitmap, lastStegoBitmap;
 
-    private KeyManager keyManager;
-    private LSBImageSteganography imageStego;
+    private StegoManager stegoManager;
     private Bitmap embeddedBitmap;
-    private LSBAudioSteganography audioStego;
     private File lastOriginalAudioFile, lastStegoAudioFile;
 
     private enum Operation { ENCODE_IMAGE, DECODE_IMAGE, ENCODE_AUDIO, DECODE_AUDIO }
@@ -71,15 +63,49 @@ public class MainActivity extends AppCompatActivity {
             if (uri != null) saveAudioFile(uri);
         });
 
+    private Uri pendingOriginalAudioUri;
+    private final ActivityResultLauncher<String> pickStegoAudioLauncher = registerForActivityResult(
+        new ActivityResultContracts.GetContent(),
+        uri -> {
+            if (uri != null && pendingOriginalAudioUri != null) {
+                handleAudioDecodeUris(pendingOriginalAudioUri, uri);
+                pendingOriginalAudioUri = null;
+            }
+        });
+    private final ActivityResultLauncher<String> pickOriginalAudioLauncher = registerForActivityResult(
+        new ActivityResultContracts.GetContent(),
+        uri -> {
+            if (uri != null) {
+                pendingOriginalAudioUri = uri;
+                pickStegoAudioLauncher.launch("audio/*");
+            }
+        });
+
+    private Uri pendingOriginalImageUri;
+    private final ActivityResultLauncher<String> pickStegoImageLauncher = registerForActivityResult(
+        new ActivityResultContracts.GetContent(),
+        uri -> {
+            if (uri != null && pendingOriginalImageUri != null) {
+                handleImageDecodeUris(pendingOriginalImageUri, uri);
+                pendingOriginalImageUri = null;
+            }
+        });
+    private final ActivityResultLauncher<String> pickOriginalImageLauncher = registerForActivityResult(
+        new ActivityResultContracts.GetContent(),
+        uri -> {
+            if (uri != null) {
+                pendingOriginalImageUri = uri;
+                pickStegoImageLauncher.launch("image/*");
+            }
+        });
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         setupUI();
         setupListeners();
-        imageStego = new LSBImageSteganography();
-        audioStego = new LSBAudioSteganography();
-        keyManager = new KeyManager();
+        stegoManager = new StegoManager();
     }
 
     private void setupUI() {
@@ -90,7 +116,6 @@ public class MainActivity extends AppCompatActivity {
         btnDecodeImage = findViewById(R.id.btnDecodeImage);
         btnEncodeAudio = findViewById(R.id.btnEncodeAudio);
         btnDecodeAudio = findViewById(R.id.btnDecodeAudio);
-        // Remove ivOriginal, ivStego, ivDiff as they are no longer in the layout
     }
 
     private void setupListeners() {
@@ -103,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
         btnDecodeImage.setOnClickListener(v -> {
             if (!ensureKey()) return;
             currentOp = Operation.DECODE_IMAGE;
-            pickImageLauncher.launch("image/*");
+            pickOriginalImageLauncher.launch("image/*");
         });
         btnEncodeAudio.setOnClickListener(v -> {
             if (!ensureKey()) return;
@@ -113,14 +138,13 @@ public class MainActivity extends AppCompatActivity {
         btnDecodeAudio.setOnClickListener(v -> {
             if (!ensureKey()) return;
             currentOp = Operation.DECODE_AUDIO;
-            pickAudioLauncher.launch("audio/*");
+            pickOriginalAudioLauncher.launch("audio/*");
         });
     }
 
     private void generateKey() {
         try {
-            keyManager.generateKey();
-            String keyB64 = keyManager.encodeKeyToBase64();
+            String keyB64 = stegoManager.generateKey();
             etKey.setText(keyB64);
             Toast.makeText(this, "Key generated", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
@@ -129,13 +153,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean ensureKey() {
-        if (!keyManager.hasKey()) {
+        if (!stegoManager.hasKey()) {
             String keyText = etKey.getText().toString().trim();
             if (keyText.isEmpty()) {
                 Toast.makeText(this, "Enter or generate a key first", Toast.LENGTH_SHORT).show();
                 return false;
             }
-            keyManager.decodeKeyFromBase64(keyText);
+            stegoManager.setKeyFromBase64(keyText);
         }
         return true;
     }
@@ -143,15 +167,14 @@ public class MainActivity extends AppCompatActivity {
     private void handleImageUri(Uri uri) {
         new Thread(() -> {
             try {
-                Bitmap src = ImageUtils.loadBitmapFromUri(this, uri);
                 if (currentOp == Operation.ENCODE_IMAGE) {
                     String msg = etMessage.getText().toString();
-                    embeddedBitmap = imageStego.embed(src, msg, keyManager.getSecretKey());
-                    lastOriginalBitmap = src;
+                    embeddedBitmap = stegoManager.embedMessageInImage(this, uri, msg);
+                    lastOriginalBitmap = ImageUtils.loadBitmapFromUri(this, uri);
                     lastStegoBitmap = embeddedBitmap;
                     runOnUiThread(() -> saveImageLauncher.launch("stego.png"));
                 } else {
-                    final Bitmap stegoBitmap = src;
+                    final Bitmap stegoBitmap = ImageUtils.loadBitmapFromUri(this, uri);
                     final Bitmap originalBitmap = lastOriginalBitmap;
                     final Bitmap diffBitmap = (originalBitmap != null)
                         ? LSBImageSteganography.createLSBDifferenceBitmap(originalBitmap, stegoBitmap)
@@ -171,10 +194,13 @@ public class MainActivity extends AppCompatActivity {
                             diffBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
                         }
                     }
+                    String encrypted = stegoManager.extractRawStringFromImageFile(stegoFile.getAbsolutePath());
                     Intent intent = new Intent(this, ImageComparisonActivity.class);
                     intent.putExtra("originalPath", origFile.getAbsolutePath());
                     intent.putExtra("stegoPath", stegoFile.getAbsolutePath());
                     intent.putExtra("diffPath", diffBitmap != null ? diffFile.getAbsolutePath() : null);
+                    intent.putExtra("encrypted", encrypted);
+                    intent.putExtra("key", etKey.getText().toString().trim());
                     runOnUiThread(() -> startActivity(intent));
                 }
             } catch (Exception e) {
@@ -185,43 +211,110 @@ public class MainActivity extends AppCompatActivity {
 
     private void handleAudioUri(Uri uri) {
         new Thread(() -> {
-            try (InputStream is = getContentResolver().openInputStream(uri)) {
-                File inAudioFile = File.createTempFile("ina", ".wav", getCacheDir());
-                try (FileOutputStream fos = new FileOutputStream(inAudioFile)) {
-                    byte[] buf = new byte[4096];
-                    int len;
-                    while ((len = is.read(buf)) > 0) fos.write(buf, 0, len);
-                }
+            try {
                 if (currentOp == Operation.ENCODE_AUDIO) {
                     String msg = etMessage.getText().toString();
-                    File outAudioFile = File.createTempFile("out", ".wav", getCacheDir());
-                    audioStego.embed(inAudioFile, outAudioFile, msg, keyManager.getSecretKey());
-                    lastOriginalAudioFile = inAudioFile;
+                    File outAudioFile = stegoManager.embedMessageInAudio(this, uri, msg);
                     lastStegoAudioFile = outAudioFile;
                     runOnUiThread(() -> saveAudioLauncher.launch("stego.wav"));
                 } else {
-                    File stegoAudioFile = inAudioFile;
+                    File stegoAudioFile = File.createTempFile("stego", ".wav", getCacheDir());
+                    try (InputStream is = getContentResolver().openInputStream(uri);
+                         FileOutputStream fos = new FileOutputStream(stegoAudioFile)) {
+                        byte[] buf = new byte[4096];
+                        int len;
+                        while ((len = is.read(buf)) > 0) fos.write(buf, 0, len);
+                    }
                     File originalAudioFile = lastOriginalAudioFile;
                     File diffAudioFile = null;
                     if (originalAudioFile != null) {
                         diffAudioFile = File.createTempFile("diff", ".wav", getCacheDir());
                         LSBAudioSteganography.createLSBDifferenceWav(originalAudioFile, stegoAudioFile, diffAudioFile);
                     }
-                    String extracted = "";
-                    try {
-                        extracted = audioStego.extract(stegoAudioFile, keyManager.getSecretKey());
-                    } catch (Exception e) {
-                        extracted = "Error: " + e.getMessage();
-                    }
+                    String encrypted = stegoManager.extractRawStringFromAudioFile(stegoAudioFile.getAbsolutePath());
                     Intent intent = new Intent(this, AudioComparisonActivity.class);
                     intent.putExtra("originalPath", originalAudioFile != null ? originalAudioFile.getAbsolutePath() : null);
                     intent.putExtra("stegoPath", stegoAudioFile.getAbsolutePath());
                     intent.putExtra("diffPath", diffAudioFile != null ? diffAudioFile.getAbsolutePath() : null);
-                    intent.putExtra("extracted", extracted);
+                    intent.putExtra("encrypted", encrypted);
+                    intent.putExtra("key", etKey.getText().toString().trim());
                     runOnUiThread(() -> startActivity(intent));
                 }
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(this, "Audio operation failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
+            }
+        }).start();
+    }
+
+    private void handleAudioDecodeUris(Uri originalUri, Uri stegoUri) {
+        new Thread(() -> {
+            try {
+                // Copy original audio to temp file
+                File originalAudioFile = File.createTempFile("original", ".wav", getCacheDir());
+                try (InputStream is = getContentResolver().openInputStream(originalUri);
+                     FileOutputStream fos = new FileOutputStream(originalAudioFile)) {
+                    byte[] buf = new byte[4096];
+                    int len;
+                    while ((len = is.read(buf)) > 0) fos.write(buf, 0, len);
+                }
+                // Copy stego audio to temp file
+                File stegoAudioFile = File.createTempFile("stego", ".wav", getCacheDir());
+                try (InputStream is = getContentResolver().openInputStream(stegoUri);
+                     FileOutputStream fos = new FileOutputStream(stegoAudioFile)) {
+                    byte[] buf = new byte[4096];
+                    int len;
+                    while ((len = is.read(buf)) > 0) fos.write(buf, 0, len);
+                }
+                // Create diff
+                File diffAudioFile = File.createTempFile("diff", ".wav", getCacheDir());
+                LSBAudioSteganography.createLSBDifferenceWav(originalAudioFile, stegoAudioFile, diffAudioFile);
+                // Extract message
+                String encrypted = stegoManager.extractRawStringFromAudioFile(stegoAudioFile.getAbsolutePath());
+                Intent intent = new Intent(this, AudioComparisonActivity.class);
+                intent.putExtra("originalPath", originalAudioFile.getAbsolutePath());
+                intent.putExtra("stegoPath", stegoAudioFile.getAbsolutePath());
+                intent.putExtra("diffPath", diffAudioFile.getAbsolutePath());
+                intent.putExtra("encrypted", encrypted);
+                intent.putExtra("key", etKey.getText().toString().trim());
+                runOnUiThread(() -> startActivity(intent));
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this, "Audio operation failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
+            }
+        }).start();
+    }
+
+    private void handleImageDecodeUris(Uri originalUri, Uri stegoUri) {
+        new Thread(() -> {
+            try {
+                // Copy original image to temp file
+                Bitmap originalBitmap = ImageUtils.loadBitmapFromUri(this, originalUri);
+                File originalFile = File.createTempFile("original", ".png", getCacheDir());
+                try (FileOutputStream fos = new FileOutputStream(originalFile)) {
+                    originalBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                }
+                // Copy stego image to temp file
+                Bitmap stegoBitmap = ImageUtils.loadBitmapFromUri(this, stegoUri);
+                File stegoFile = File.createTempFile("stego", ".png", getCacheDir());
+                try (FileOutputStream fos = new FileOutputStream(stegoFile)) {
+                    stegoBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                }
+                // Create diff
+                File diffFile = File.createTempFile("diff", ".png", getCacheDir());
+                Bitmap diffBitmap = LSBImageSteganography.createLSBDifferenceBitmap(originalBitmap, stegoBitmap);
+                try (FileOutputStream fos = new FileOutputStream(diffFile)) {
+                    diffBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                }
+                // Extract encrypted message
+                String encrypted = stegoManager.extractRawStringFromImageFile(stegoFile.getAbsolutePath());
+                Intent intent = new Intent(this, ImageComparisonActivity.class);
+                intent.putExtra("originalPath", originalFile.getAbsolutePath());
+                intent.putExtra("stegoPath", stegoFile.getAbsolutePath());
+                intent.putExtra("diffPath", diffFile.getAbsolutePath());
+                intent.putExtra("encrypted", encrypted);
+                intent.putExtra("key", etKey.getText().toString().trim());
+                runOnUiThread(() -> startActivity(intent));
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this, "Image operation failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
             }
         }).start();
     }

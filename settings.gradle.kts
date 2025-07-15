@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Stegnography"
 include(":app")
- 
+include(":stegnography-lib")

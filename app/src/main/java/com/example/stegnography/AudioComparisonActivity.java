@@ -1,18 +1,18 @@
-package com.example.stegnography.ui;
+package com.example.stegnography;
 
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
-import com.example.stegnography.R;
-import java.io.File;
-import java.io.FileInputStream;
+
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import com.example.stegnography.ui.WaveformView;
+import java.io.File;
+import android.net.Uri;
+
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import com.example.stegnography.StegoManager;
 
 public class AudioComparisonActivity extends AppCompatActivity {
     private MediaPlayer player;
@@ -24,6 +24,7 @@ public class AudioComparisonActivity extends AppCompatActivity {
         String originalPath = getIntent().getStringExtra("originalPath");
         String stegoPath = getIntent().getStringExtra("stegoPath");
         String diffPath = getIntent().getStringExtra("diffPath");
+        String encrypted = getIntent().getStringExtra("encrypted");
         String extracted = getIntent().getStringExtra("extracted");
 
         FragmentManager fm = getSupportFragmentManager();
@@ -61,12 +62,23 @@ public class AudioComparisonActivity extends AppCompatActivity {
         Button btnPlayOriginal = findViewById(R.id.btnPlayOriginal);
         Button btnPlayStego = findViewById(R.id.btnPlayStego);
         Button btnPlayDiff = findViewById(R.id.btnPlayDiff);
+        TextView tvEncrypted = findViewById(R.id.tvEncryptedAudio);
         TextView tvExtracted = findViewById(R.id.tvExtractedAudio);
 
         btnPlayOriginal.setOnClickListener(v -> playAudio(originalPath));
         btnPlayStego.setOnClickListener(v -> playAudio(stegoPath));
         btnPlayDiff.setOnClickListener(v -> playAudio(diffPath));
-        tvExtracted.setText("Extracted Message:\n" + (extracted != null ? extracted : ""));
+        tvEncrypted.setText("Encrypted Message:\n" + (encrypted != null ? encrypted : ""));
+        String decrypted = "";
+        String keyB64 = getIntent().getStringExtra("key");
+        StegoManager stegoManager = new StegoManager();
+        stegoManager.setKeyFromBase64(keyB64);
+        try {
+            decrypted = stegoManager.extractMessageFromAudio(this, Uri.fromFile(new File(stegoPath)));
+        } catch (Exception e) {
+            decrypted = "Error: " + e.getMessage();
+        }
+        tvExtracted.setText("Decrypted Message:\n" + decrypted);
     }
 
     private void playAudio(String path) {
@@ -80,28 +92,6 @@ public class AudioComparisonActivity extends AppCompatActivity {
             player.start();
         } catch (IOException e) {
             e.printStackTrace();
-        }
-    }
-
-    // Static method for fragment to use
-    public static byte[] loadPcmFromWavStatic(String wavPath) {
-        try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(wavPath, "r")) {
-            raf.seek(12);
-            while (true) {
-                byte[] chunkId = new byte[4];
-                raf.readFully(chunkId);
-                int chunkSize = Integer.reverseBytes(raf.readInt());
-                String id = new String(chunkId, "US-ASCII");
-                if (id.equals("data")) {
-                    byte[] pcm = new byte[chunkSize];
-                    raf.readFully(pcm);
-                    return pcm;
-                } else {
-                    raf.skipBytes(chunkSize);
-                }
-            }
-        } catch (Exception e) {
-            return null;
         }
     }
 

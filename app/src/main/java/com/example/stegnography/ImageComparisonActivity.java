@@ -1,15 +1,13 @@
-package com.example.stegnography.ui;
+package com.example.stegnography;
 
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Bundle;
-import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
-import com.example.stegnography.R;
-import com.example.stegnography.stego.image.LSBImageSteganography;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import com.example.stegnography.StegoManager;
+import java.io.File;
+import android.net.Uri;
 
 public class ImageComparisonActivity extends AppCompatActivity {
     @Override
@@ -53,18 +51,19 @@ public class ImageComparisonActivity extends AppCompatActivity {
 
         ft.commit();
 
-        // Set extracted message as before
+        String encrypted = getIntent().getStringExtra("encrypted");
+        TextView tvEncrypted = findViewById(R.id.tvEncrypted);
         TextView tvExtracted = findViewById(R.id.tvExtracted);
-        String stegoBmpPath = stegoPath;
-        String extracted = "";
-        if (stegoBmpPath != null) {
-            try {
-                android.graphics.Bitmap stegoBmp = android.graphics.BitmapFactory.decodeFile(stegoBmpPath);
-                extracted = com.example.stegnography.stego.image.LSBImageSteganography.getRawExtractedString(stegoBmp);
-            } catch (Exception e) {
-                extracted = "Error extracting: " + e.getMessage();
-            }
+        tvEncrypted.setText("Encrypted Message:\n" + (encrypted != null ? encrypted : ""));
+        String keyB64 = getIntent().getStringExtra("key");
+        StegoManager stegoManager = new StegoManager();
+        stegoManager.setKeyFromBase64(keyB64);
+        String decrypted = "";
+        try {
+            decrypted = stegoManager.extractMessageFromImage(this, Uri.fromFile(new File(stegoPath)));
+        } catch (Exception e) {
+            decrypted = "Error: " + e.getMessage();
         }
-        tvExtracted.setText("Extracted String from Stego Image:\n" + extracted);
+        tvExtracted.setText("Decrypted Message:\n" + decrypted);
     }
 } 
